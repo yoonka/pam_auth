@@ -16,6 +16,10 @@ cache:
 build-pam-auth:
   image: rust:latest
   stage: build
+  services:
+    - docker:dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - apt-get update && apt-get install -y pkg-config curl git gcc g++ build-essential
     - cargo install cross
