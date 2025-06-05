@@ -43,6 +43,7 @@ build-pam-auth_freebsd:
 
   script:
     - sudo exlector artifactory -f .exlector/artifactory.yaml
+    - ls -l
 
   artifacts:
     paths:
