@@ -1,0 +1,29 @@
+version: 1 # required
+
+metadata: # not required
+  name: "pam-auth"
+
+project:
+  name: "pam-auth"
+  namespace: "pam-auth"
+
+  artifactory:
+    git: #clones and checkouts the branch
+      source: "local"
+      branch: "master"
+
+    dependencies:
+      - name: "rust"
+        version: "latest"
+
+    init_commands:
+      - "export PATH=$PATH:$HOME/.cargo/bin"
+
+    test:
+      tests:
+        - name: "Package Testing"
+          command: "cargo test"
+          required: false
+    build:
+      command: "cargo build --release"
+
