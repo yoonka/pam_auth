@@ -38,8 +38,11 @@ build-pam-auth_freebsd:
     - freebsd
   stage: build
 
+  before_script:
+    - export PATH="/usr/local/sbin:$PATH"
+
   script:
-    - exlector artifactory -f .exlector/artifactory.yaml
+    - sudo exlector artifactory -f .exlector/artifactory.yaml
 
   artifacts:
     paths:
