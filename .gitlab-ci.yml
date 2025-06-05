@@ -46,7 +46,7 @@ build-pam-auth_freebsd:
 
   artifacts:
     paths:
-      - target/release/pam_auth
+      - ./target/release/pam_auth
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
