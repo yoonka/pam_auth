@@ -16,6 +16,9 @@ cache:
 build-pam-auth_linux:
   image: rust:latest
   stage: build
+  before_script:
+    - apt-get update
+    - apt-get install -y libpam0g-dev
   script:
     - cargo build --release
     - mkdir -p dist
@@ -27,6 +30,8 @@ build-pam-auth_linux:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_COMMIT_TAG'
+
 
 build-pam-auth_freebsd:
   tags:
