@@ -4,8 +4,8 @@ stages:
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
-  ARTIFACT_FREEBSD_NAME: "pam_auth_x86_64_unknown_freebsd"
-  ARTIFACT_LINUX_NAME: "pam_auth_x86_64_unknown_linux_gnu"
+  ARTIFACT_FREEBSD_NAME: "pam_auth-freebsd"
+  ARTIFACT_LINUX_NAME: "pam_auth-linux"
 
 # 🏗️ Build binaries for Linux and FreeBSD
 cache:
@@ -32,8 +32,7 @@ build-pam-auth_linux:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-    - if: '$CI_COMMIT_TAG'
-
+    - if: "$CI_COMMIT_TAG"
 
 build-pam-auth_freebsd:
   tags:
@@ -46,7 +45,6 @@ build-pam-auth_freebsd:
   script:
     - sudo exlector artifactory -f .exlector/artifactory.yaml --file --path target/release/pam_auth --name ${ARTIFACT_FREEBSD_NAME}
     - ls -la
-    
 
   artifacts:
     paths:
@@ -54,22 +52,23 @@ build-pam-auth_freebsd:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
 
 create-release:
   image: curlimages/curl:latest
   stage: release
   script:
-    - >
+    - |
       curl --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
-      --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
-      --form "name=pam_auth $CI_COMMIT_TAG" \
-      --form "tag_name=$CI_COMMIT_TAG" \
-      --form "description=Release of pam_auth $CI_COMMIT_TAG" \
-      --form "assets[links][][name]=pam_auth-linux" \
-      --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/dist/pam_auth-linux" \
-      --form "assets[links][][name]=pam_auth-freebsd" \
-      --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/dist/pam_auth-freebsd"
+        --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        --form "name=pam_auth $CI_COMMIT_TAG" \
+        --form "tag_name=$CI_COMMIT_TAG" \
+        --form "description=Release of pam_auth $CI_COMMIT_TAG" \
+        --form "assets[links][][name]=pam_auth-linux" \
+        --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_REF_NAME/raw/dist/pam_auth-linux?job=build-pam-auth_linux" \
+        --form "assets[links][][name]=pam_auth-freebsd" \
+        --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_REF_NAME/raw/target/release/pam_auth?job=build-pam-auth_freebsd"
+
   rules:
-    - if: '$CI_COMMIT_TAG'
+    - if: "$CI_COMMIT_TAG"
     - if: '$CI_COMMIT_BRANCH == "master"'
