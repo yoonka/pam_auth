@@ -4,6 +4,8 @@ stages:
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+  ARTIFACT_FREEBSD_NAME: "pam_auth_x86_64_unknown_freebsd"
+  ARTIFACT_LINUX_NAME: "pam_auth_x86_64_unknown_linux_gnu"
 
 # 🏗️ Build binaries for Linux and FreeBSD
 cache:
@@ -22,7 +24,7 @@ build-pam-auth_linux:
   script:
     - cargo build --release
     - mkdir -p dist
-    - cp target/release/pam_auth dist/pam_auth_x86_64_unknown_linux_gnu
+    - cp target/release/pam_auth dist/${ARTIFACT_LINUX_NAME}
   artifacts:
     paths:
       - dist/
@@ -42,13 +44,13 @@ build-pam-auth_freebsd:
     - export PATH="/usr/local/sbin:$PATH"
 
   script:
-    - sudo exlector artifactory -f .exlector/artifactory.yaml --file --path target/release/pam_auth --name pam_auth_x86_64_unknown_freebsd
+    - sudo exlector artifactory -f .exlector/artifactory.yaml --file --path target/release/pam_auth --name ${ARTIFACT_FREEBSD_NAME}
     - ls -la
     
 
   artifacts:
     paths:
-      - ./target/release/pam_auth
+      - ./${ARTIFACT_FREEBSD_NAME}
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
