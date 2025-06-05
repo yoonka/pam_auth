@@ -25,5 +25,5 @@ project:
           command: "cargo test"
           required: false
     build:
-      command: "cargo build --release"
+      command: "mkdir -p artifacts && cargo build --release && cp target/release/pam_auth artifacts/"
 
