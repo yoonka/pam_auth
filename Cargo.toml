@@ -1,0 +1,8 @@
+[package]
+name = "pam_auth"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+pam = "0.7"
