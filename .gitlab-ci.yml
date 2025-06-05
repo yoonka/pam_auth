@@ -1,0 +1,41 @@
+stages:
+  - build
+  - release
+
+variables:
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+
+# 🏗️ Build binaries for Linux and FreeBSD
+build-pam-auth:
+  image: rustembedded/cross:x86_64-unknown-linux-gnu
+  stage: build
+  script:
+    - cross build --release --target x86_64-unknown-linux-gnu
+    - cross build --release --target x86_64-unknown-freebsd
+    - mkdir -p dist
+    - cp target/x86_64-unknown-linux-gnu/release/pam_auth dist/pam_auth-linux
+    - cp target/x86_64-unknown-freebsd/release/pam_auth dist/pam_auth-freebsd
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_TAG'  # Only build on tag pushes
+
+# 🚀 Create a GitLab Release with attached binaries
+create-release:
+  image: curlimages/curl:latest
+  stage: release
+  script:
+    - >
+      curl --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
+      --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+      --form "name=pam_auth $CI_COMMIT_TAG" \
+      --form "tag_name=$CI_COMMIT_TAG" \
+      --form "description=Release of pam_auth $CI_COMMIT_TAG" \
+      --form "assets[links][][name]=pam_auth-linux" \
+      --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/dist/pam_auth-linux" \
+      --form "assets[links][][name]=pam_auth-freebsd" \
+      --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/dist/pam_auth-freebsd"
+  rules:
+    - if: '$CI_COMMIT_TAG'
