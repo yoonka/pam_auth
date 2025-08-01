@@ -1,13 +1,14 @@
 stages:
   - build
+  - upload
   - release
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
   ARTIFACT_FREEBSD_NAME: "pam_auth-freebsd"
   ARTIFACT_LINUX_NAME: "pam_auth-linux"
+  PACKAGE_DIR: "pam_auth"
 
-# 🏗️ Build binaries for Linux and FreeBSD
 cache:
   key: "$CI_JOB_NAME"
   paths:
@@ -15,12 +16,12 @@ cache:
     - .cargo/registry
     - target/
 
-build-pam-auth_linux:
+# 🛠 Build for Linux
+build-linux:
   image: rust:latest
   stage: build
   before_script:
-    - apt-get update
-    - apt-get install -y libpam0g-dev
+    - apt-get update && apt-get install -y libpam0g-dev
   script:
     - cargo build --release
     - mkdir -p dist
@@ -28,47 +29,53 @@ build-pam-auth_linux:
   artifacts:
     paths:
       - dist/
-    expire_in: 1 week
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
     - if: "$CI_COMMIT_TAG"
 
-build-pam-auth_freebsd:
-  tags:
-    - freebsd
+# 🛠 Build for FreeBSD
+build-freebsd:
+  tags: [freebsd]
   stage: build
-
-  before_script:
-    - export PATH="/usr/local/sbin:$PATH"
-
   script:
     - sudo exlector artifactory -f .exlector/artifactory.yaml --file --path target/release/pam_auth --name ${ARTIFACT_FREEBSD_NAME}
-    - ls -la
-
   artifacts:
     paths:
       - ./${ARTIFACT_FREEBSD_NAME}
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
     - if: "$CI_COMMIT_TAG"
 
-create-release:
+# 📦 Upload both artifacts as Generic Packages
+upload-artifacts:
+  stage: upload
   image: curlimages/curl:latest
-  stage: release
+  needs:
+    - build-linux
+    - build-freebsd
   script:
     - |
-      curl --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" \
-        --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
-        --form "name=pam_auth $CI_COMMIT_TAG" \
-        --form "tag_name=$CI_COMMIT_TAG" \
-        --form "description=Release of pam_auth $CI_COMMIT_TAG" \
-        --form "assets[links][][name]=pam_auth-linux" \
-        --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_REF_NAME/raw/dist/pam_auth-linux?job=build-pam-auth_linux" \
-        --form "assets[links][][name]=pam_auth-freebsd" \
-        --form "assets[links][][url]=$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_REF_NAME/raw/target/release/pam_auth?job=build-pam-auth_freebsd"
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --upload-file dist/${ARTIFACT_LINUX_NAME} \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/${PACKAGE_DIR}/${CI_COMMIT_TAG}/${ARTIFACT_LINUX_NAME}"
 
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --upload-file ${ARTIFACT_FREEBSD_NAME} \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/${PACKAGE_DIR}/${CI_COMMIT_TAG}/${ARTIFACT_FREEBSD_NAME}"
   rules:
     - if: "$CI_COMMIT_TAG"
-    - if: '$CI_COMMIT_BRANCH == "master"'
+
+# 🚀 Create a GitLab Release with links to the uploaded artifacts
+create-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - upload-artifacts
+  script:
+    - |
+      release-cli create \
+        --name "pam_auth $CI_COMMIT_TAG" \
+        --tag-name "$CI_COMMIT_TAG" \
+        --description "Automated release of pam_auth $CI_COMMIT_TAG" \
+        --assets-link "{\"name\":\"pam_auth-linux\",\"url\":\"$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/${PACKAGE_DIR}/${CI_COMMIT_TAG}/${ARTIFACT_LINUX_NAME}\"}" \
+        --assets-link "{\"name\":\"pam_auth-freebsd\",\"url\":\"$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/${PACKAGE_DIR}/${CI_COMMIT_TAG}/${ARTIFACT_FREEBSD_NAME}\"}"
+  rules:
+    - if: "$CI_COMMIT_TAG"

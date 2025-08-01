@@ -1,1 +1,24 @@
-target/
+# Rust build artifacts
+/target/
+
+# Cargo.lock - if you are building a library and want to allow consumers to manage their own dependencies,
+# otherwise, it's generally recommended to commit Cargo.lock for applications to ensure reproducible builds.
+# Cargo.lock
+
+# Editor/IDE specific files
+.idea/
+.vscode/
+*.swp
+*.bak
+*~
+.DS_Store
+Thumbs.db
+
+# Operating System specific files
+.localized
+.Trashes
+ehthumbs.db
+
+# Other temporary files
+/tmp/
+*.log
