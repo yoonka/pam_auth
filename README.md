@@ -62,19 +62,6 @@ target/x86_64-unknown-linux-gnu/release/pam_auth
 target/x86_64-unknown-freebsd/release/pam_auth
 ```
 
----
-
-## 🛠 GitLab CI/CD
-
-On every tag push, GitLab:
-- Builds Linux and FreeBSD binaries
-- Publishes them to a GitLab Release
-- Provides download links
-
-You can find the artifacts under **Deploy → Releases** in GitLab.
-
----
-
 ## 🧪 Testing
 
 To test the binary:
