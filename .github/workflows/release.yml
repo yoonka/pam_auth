@@ -1,0 +1,134 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PAM development libraries
+        run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          cp target/release/pam_auth dist/pam_auth-linux
+          chmod +x dist/pam_auth-linux
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pam_auth-linux
+          path: dist/pam_auth-linux
+          if-no-files-found: error
+
+  build-freebsd:
+    name: Build for FreeBSD
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build for FreeBSD
+        run: cross build --release --target x86_64-unknown-freebsd
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          cp target/x86_64-unknown-freebsd/release/pam_auth dist/pam_auth-freebsd
+          chmod +x dist/pam_auth-freebsd
+
+      - name: Upload FreeBSD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pam_auth-freebsd
+          path: dist/pam_auth-freebsd
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-linux, build-freebsd]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pam_auth-linux
+          path: ./artifacts
+
+      - name: Download FreeBSD artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pam_auth-freebsd
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: pam_auth ${{ github.ref_name }}
+          body: |
+            Automated release of pam_auth ${{ github.ref_name }}
+
+            ## Downloads
+            - **Linux**: pam_auth-linux
+            - **FreeBSD**: pam_auth-freebsd
+          files: |
+            ./artifacts/pam_auth-linux
+            ./artifacts/pam_auth-freebsd
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
