@@ -67,24 +67,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+      - name: Build on FreeBSD
+        uses: vmactions/freebsd-vm@v1
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
-      - name: Install cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Build for FreeBSD
-        run: cross build --release --target x86_64-unknown-freebsd
-
-      - name: Prepare artifact
-        run: |
-          mkdir -p dist
-          cp target/x86_64-unknown-freebsd/release/pam_auth dist/pam_auth-freebsd
-          chmod +x dist/pam_auth-freebsd
+          release: "14.1"
+          usesh: true
+          prepare: |
+            pkg install -y rust cargo
+          run: |
+            set -e
+            cargo build --release
+            mkdir -p dist
+            cp target/release/pam_auth dist/pam_auth-freebsd
+            chmod +x dist/pam_auth-freebsd
 
       - name: Upload FreeBSD artifact
         uses: actions/upload-artifact@v4
